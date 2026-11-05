@@ -12,6 +12,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from raganything.minicpmocr import MiniCPMOCRParser  # noqa: E402
 from raganything.parser import MineruParser, PaddleOCRParser, Parser  # noqa: E402
 
 # Image references only become image blocks for real image files.
@@ -184,7 +185,9 @@ class TestEncodingHandling:
 class TestNoPdfRoundTrip:
     """The point of the change: text formats must never touch the PDF path."""
 
-    @pytest.mark.parametrize("parser_cls", [MineruParser, PaddleOCRParser])
+    @pytest.mark.parametrize(
+        "parser_cls", [MineruParser, PaddleOCRParser, MiniCPMOCRParser]
+    )
     def test_parse_document_routes_text_without_pdf_conversion(
         self, tmp_path, monkeypatch, parser_cls
     ):

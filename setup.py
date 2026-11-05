@@ -67,6 +67,12 @@ extras_require = {
         "paddleocr>=2.7.0",
         "pypdfium2>=4.25.0",
     ],  # PaddleOCR parser for scanned PDFs
+    # MiniCPM-OCR parser: local PP-DocLayoutV3 plus an external recognition server.
+    # paddlepaddle is platform-specific and is not pinned here.
+    "minicpmocr": [
+        "minicpm-ocr[layout]>=1.0.4,<1.1",
+        "pypdfium2>=4.25.0",
+    ],
     "all": [
         "Pillow>=10.0.0",
         "reportlab>=4.0.0",

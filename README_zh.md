@@ -318,7 +318,7 @@ async def main():
     # 创建 RAGAnything 配置
     config = RAGAnythingConfig(
         working_dir="./rag_storage",
-        parser="mineru",  # 选择解析器：mineru、docling 或 paddleocr
+        parser="mineru",  # 选择解析器：mineru、docling、paddleocr 或 minicpmocr
         parse_method="auto",  # 解析方法：auto, ocr 或 txt
         enable_image_processing=True,
         enable_table_processing=True,
@@ -1091,7 +1091,7 @@ python examples/text_format_test.py --check-reportlab --file dummy
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_BASE_URL=your_base_url  # 可选
 OUTPUT_DIR=./output             # 解析文档的默认输出目录
-PARSER=mineru                   # 解析器选择：mineru、docling 或 paddleocr
+PARSER=mineru                   # 解析器选择：mineru、docling、paddleocr 或 minicpmocr
 PARSE_METHOD=auto              # 解析方法：auto, ocr 或 txt
 ```
 
@@ -1100,7 +1100,7 @@ PARSE_METHOD=auto              # 解析方法：auto, ocr 或 txt
 
 ### 解析器配置
 
-解析器在创建 `RAGAnything` 时确定：将 `RAGAnythingConfig(parser=...)` 设为 `"mineru"`（默认）、`"docling"` 或 `"paddleocr"`，或使用 `PARSER` 环境变量（命令行工具：`--parser`）。不能在单次 `process_document_complete()` 调用中切换解析器。
+解析器在创建 `RAGAnything` 时确定：将 `RAGAnythingConfig(parser=...)` 设为 `"mineru"`（默认）、`"docling"`、`"paddleocr"` 或 `"minicpmocr"`，或使用 `PARSER` 环境变量（命令行工具：`--parser`）。不能在单次 `process_document_complete()` 调用中切换解析器。
 
 RAGAnything 现在支持多种解析器，每种解析器都有其特定的优势：
 
@@ -1111,7 +1111,7 @@ RAGAnything 现在支持多种解析器，每种解析器都有其特定的优�
 
 #### Docling 解析器
 - 专门优化Office文档和HTML文件的解析
-- 唯一接受 HTML（.html、.htm、.xhtml）的内置解析器；MinerU 和 PaddleOCR 会拒绝 HTML（见[文档格式](#文档格式)）
+- 唯一接受 HTML（.html、.htm、.xhtml）的内置解析器；MinerU、PaddleOCR 和 MiniCPM-OCR 会拒绝 HTML（见[文档格式](#文档格式)）
 - 更好的文档结构保持
 - 原生支持多种Office格式
 
@@ -1120,6 +1120,32 @@ RAGAnything 现在支持多种解析器，每种解析器都有其特定的优�
 ```bash
 pip install docling
 ```
+
+#### MiniCPM-OCR 解析器
+- 面向中英文 PDF 和图像（含扫描件、照片）的块级解析器
+- 本地运行 PP-DocLayoutV3，再把每个裁剪块送到外部 MiniCPM-OCR 1.0 服务（`Text Recognition:`、`Table Recognition:`、`Formula Recognition:`，以及 SDK 中的其他块提示）
+- 输出标准 `content_list`：文本、表格、公式和图像
+- 支持的文件类型与 PaddleOCR 相同（PDF、图像、Office、文本）。HTML 会被拒绝
+
+识别模型不随包分发。安装可选依赖和用于版面检测的 `paddlepaddle`，并把 `MINICPM_OCR_BASE_URL` 指到已启动的服务：
+
+```bash
+pip install -e ".[minicpmocr]"
+# 或
+uv sync --extra minicpmocr
+```
+
+```bash
+MINICPM_OCR_BASE_URL=http://127.0.0.1:8000   # 服务根地址，末尾的 /v1 会被去掉
+MINICPM_OCR_MODEL=minicpm-ocr
+MINICPM_OCR_BACKEND=vllm                     # vllm、sglang、openai、llamacpp 或 ollama
+# MINICPM_OCR_API_KEY=
+# MINICPM_OCR_LAYOUT_DEVICE=cpu              # cpu 或 cuda:0
+```
+
+> **注意**：`paddlepaddle` 因平台而异，不包含在该 extra 中，请按 https://www.paddlepaddle.org.cn/install/quick 安装。`language` 参数会被接受但不会使用：一个模型同时处理中文和英文。页眉、页脚、页码、脚注和旁注默认丢弃，除非传入 `include_layout_blocks=True`。
+
+通过 `RAGAnythingConfig(parser="minicpmocr")` 或 `PARSER=minicpmocr` 选择。
 
 ### MinerU配置
 
@@ -1138,7 +1164,7 @@ mineru -p input.pdf -o output_dir -b pipeline --device cuda  # GPU加速
 
 ```python
 # 解析器来自 RAGAnythingConfig（或 PARSER），而不是 process_document_complete()
-config = RAGAnythingConfig(parser="mineru")  # "mineru"、"docling" 或 "paddleocr"
+config = RAGAnythingConfig(parser="mineru")  # "mineru"、"docling"、"paddleocr" 或 "minicpmocr"
 rag = RAGAnything(config=config, llm_model_func=llm_model_func, embedding_func=embedding_func)
 
 # 基础解析配置
@@ -1201,8 +1227,9 @@ MinerU 将 v2 标记为持续演进的输出 schema。RAG-Anything 会记录并�
 - **音频** (.mp3, .wav, .flac, .m4a, .ogg): 使用 `pip install raganything[audio]` 安装，并设置 `enable_audio_processing=True`（环境变量 `ENABLE_AUDIO_PROCESSING`）；由 faster-whisper 本地转写（`WHISPER_MODEL` 选模型；默认 `base`，中文等非拉丁语音建议 `medium` 及以上并设置 `WHISPER_LANGUAGE=zh`，小模型会写错专有名词），长音频自动切分为有序分块
 - **视频** (.mp4, .mov, .webm, .avi, .mkv): 使用 `pip install raganything[video]` 安装（另需系统 ffmpeg），并设置 `enable_video_processing=True`（环境变量 `ENABLE_VIDEO_PROCESSING`）；双通道处理：SceneDetect 场景切分 + 关键帧 VLM 描述 + 音轨转写，按时间戳合并。媒体文件可以直接传给 `process_document_complete()` / 文件夹批处理，也可以作为 content list 项插入
 - **文本文件** (.txt, .md): 使用 `pip install raganything[text]` 安装。直接解析，不再经过 PDF/OCR 中转；markdown 中指向本地图片文件（扩展名为图片格式且文件内容确为图片）的引用（`![alt](path)`）会生成图像块，与 PDF 中提取的图片走同一条多模态管线——URL、不存在的文件和其他文件保持为纯文本。被引用的图片无论位于磁盘何处都会发送给配置的视觉模型，因此只摄入图片引用可信的 Markdown
+- **MiniCPM-OCR 解析器** (`parser="minicpmocr"`): 使用 `pip install raganything[minicpmocr]` 安装，另装 `paddlepaddle` 做版面检测，并设置 `MINICPM_OCR_BASE_URL` 指向 MiniCPM-OCR 1.0 服务（vLLM、SGLang、llama.cpp、Ollama 或 OpenAI 兼容接口）
 
-> **📋 快速安装**: 使用 `pip install raganything[all]` 启用所有格式支持（仅Python依赖 - LibreOffice仍需单独安装，HTML需要Docling：`pip install docling`）
+> **📋 快速安装**: 使用 `pip install raganything[all]` 启用所有格式支持（仅Python依赖 - LibreOffice仍需单独安装，HTML需要Docling：`pip install docling`，MiniCPM-OCR 需要 `pip install raganything[minicpmocr]` 以及已启动的识别服务）
 
 ---
 
@@ -1214,7 +1241,7 @@ MinerU 将 v2 标记为持续演进的输出 schema。RAG-Anything 会记录并�
 - **Office文档** - DOC、DOCX、PPT、PPTX、XLS、XLSX
 - **图像** - JPG、PNG、BMP、TIFF、GIF、WebP
 - **文本文件** - TXT、MD
-- **HTML** - HTML、HTM、XHTML（仅 Docling 解析器：使用 `pip install docling` 安装，并通过 `RAGAnythingConfig(parser="docling")` 或 `PARSER=docling` 选择）。MinerU 和 PaddleOCR 遇到这些文件会直接报错，而不是用 LibreOffice 转成 PDF，因为该转换会请求网页引用的远程 URL 并嵌入其引用的本地文件。HTML 按文件扩展名识别：以 Office 扩展名（如 `.doc`、`.xls`）保存的 HTML 内容仍会交给 LibreOffice 转换
+- **HTML** - HTML、HTM、XHTML（仅 Docling 解析器：使用 `pip install docling` 安装，并通过 `RAGAnythingConfig(parser="docling")` 或 `PARSER=docling` 选择）。MinerU、PaddleOCR 和 MiniCPM-OCR 遇到这些文件会直接报错，而不是用 LibreOffice 转成 PDF，因为该转换会请求网页引用的远程 URL 并嵌入其引用的本地文件。HTML 按文件扩展名识别：以 Office 扩展名（如 `.doc`、`.xls`）保存的 HTML 内容仍会交给 LibreOffice 转换
 
 ### 多模态元素
 

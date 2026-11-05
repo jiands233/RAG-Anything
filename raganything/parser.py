@@ -3,8 +3,8 @@
 Generic Document Parser Utility
 
 This module provides functionality for parsing documents using the built-in
-MinerU, Docling, and PaddleOCR parsers, and exposes a small registry for
-**in-process** custom parsers (see :func:`register_parser`).
+MinerU, Docling, PaddleOCR, and MiniCPM-OCR parsers, and exposes a small
+registry for **in-process** custom parsers (see :func:`register_parser`).
 
 Important notes:
 
@@ -104,8 +104,7 @@ def _mineru_install_advice() -> str:
     if _mineru_python_unsupported():
         return _mineru_python_note()
     return (
-        "Install a MinerU 3.x release in this environment: "
-        f"{_MINERU_INSTALL_COMMAND}"
+        f"Install a MinerU 3.x release in this environment: {_MINERU_INSTALL_COMMAND}"
     )
 
 
@@ -3456,7 +3455,8 @@ def register_parser(name: str, parser_class: type) -> None:
 
     Args:
         name: Unique identifier for the parser (e.g., "marker", "surya").
-              Must not collide with built-in names ("mineru", "docling", "paddleocr").
+              Must not collide with built-in names ("mineru", "docling",
+              "paddleocr", "minicpmocr").
         parser_class: A subclass of ``Parser`` that implements at least
                       ``parse_document``, ``check_installation``, and
                       optionally ``parse_pdf``, ``parse_image``, ``parse_office_doc``.
@@ -3498,7 +3498,7 @@ def register_parser(name: str, parser_class: type) -> None:
         raise TypeError(
             f"parser_class must be a subclass of Parser, got {parser_class!r}"
         )
-    _BUILTIN_NAMES = {"mineru", "docling", "paddleocr"}
+    _BUILTIN_NAMES = {"mineru", "docling", "paddleocr", "minicpmocr"}
     if normalized_name in _BUILTIN_NAMES:
         raise ValueError(
             f"Cannot override built-in parser '{normalized_name}'. "
@@ -3539,13 +3539,27 @@ def list_parsers() -> Dict[str, str]:
         "mineru": "MineruParser",
         "docling": "DoclingParser",
         "paddleocr": "PaddleOCRParser",
+        "minicpmocr": "MiniCPMOCRParser",
     }
     for name, cls in _CUSTOM_PARSERS.items():
         result[name] = cls.__name__
     return result
 
 
-SUPPORTED_PARSERS = ("mineru", "docling", "paddleocr")
+SUPPORTED_PARSERS = ("mineru", "docling", "paddleocr", "minicpmocr")
+
+
+def _load_minicpmocr_parser():
+    """Import the optional parser lazily so this module never loads its SDK."""
+    from raganything.minicpmocr import MiniCPMOCRParser
+
+    return MiniCPMOCRParser
+
+
+def __getattr__(name: str):
+    if name == "MiniCPMOCRParser":
+        return _load_minicpmocr_parser()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def get_supported_parsers() -> tuple:
@@ -3561,7 +3575,7 @@ def get_parser(parser_type: str) -> Parser:
 
     Args:
         parser_type: Parser name (e.g., "mineru", "docling", "paddleocr",
-                     or any custom registered name).
+                     "minicpmocr", or any custom registered name).
 
     Returns:
         An instance of the requested parser.
@@ -3576,6 +3590,8 @@ def get_parser(parser_type: str) -> Parser:
         return DoclingParser()
     if parser_name == "paddleocr":
         return PaddleOCRParser()
+    if parser_name == "minicpmocr":
+        return _load_minicpmocr_parser()()
     # Check custom parser registry
     if parser_name in _CUSTOM_PARSERS:
         return _CUSTOM_PARSERS[parser_name]()
@@ -3590,7 +3606,7 @@ def main():
     Main function to run the document parser from command line
     """
     parser = argparse.ArgumentParser(
-        description="Parse documents using MinerU 2.0, Docling, or PaddleOCR"
+        description="Parse documents using MinerU, Docling, PaddleOCR, or MiniCPM-OCR"
     )
     parser.add_argument("file_path", help="Path to the document to parse")
     parser.add_argument("--output", "-o", help="Output directory path")
@@ -3652,7 +3668,7 @@ def main():
         "--parser",
         default="mineru",
         help=(
-            "Parser selection. Built-ins: mineru, docling, paddleocr. "
+            "Parser selection. Built-ins: mineru, docling, paddleocr, minicpmocr. "
             "Custom parsers registered via register_parser() in the same "
             "Python process are also accepted when you integrate RAGAnything "
             "as a library. The standalone CLI itself only sees parsers that "

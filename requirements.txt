@@ -19,6 +19,7 @@ tqdm
 # - [image]: Pillow>=10.0.0 (for BMP, TIFF, GIF, WebP format conversion)
 # - [text]: reportlab>=4.0.0 (for TXT, MD to PDF conversion)
 # - [paddleocr]: paddleocr + pypdfium2 (for parser='paddleocr' - better OCR for scanned PDFs)
+# - [minicpmocr]: minicpm-ocr[layout] + pypdfium2 (for parser='minicpmocr'; also needs paddlepaddle and MINICPM_OCR_BASE_URL)
 # - [office]: requires LibreOffice (external program, not Python package)
 # - [all]: includes all optional dependencies
 #

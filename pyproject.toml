@@ -41,6 +41,12 @@ paddleocr = [
     "paddleocr>=2.7.0",
     "pypdfium2>=4.25.0",
 ]
+# Layout model runs locally; the 1.3B recognizer is an external server.
+# paddlepaddle is platform-specific and is not pinned here.
+minicpmocr = [
+    "minicpm-ocr[layout]>=1.0.4,<1.1",
+    "pypdfium2>=4.25.0",
+]
 markdown = [
     "markdown>=3.4.0",
     "weasyprint>=60.0",

@@ -29,6 +29,9 @@ pip install tqdm
 # Optional for parser='paddleocr'
 pip install raganything[paddleocr]
 
+# Optional for parser='minicpmocr' (also needs paddlepaddle and MINICPM_OCR_BASE_URL)
+pip install raganything[minicpmocr]
+
 # Optional for parser='docling' (required for HTML files)
 pip install docling
 ```
@@ -42,7 +45,7 @@ from raganything.batch_parser import BatchParser
 
 # Create batch parser
 batch_parser = BatchParser(
-    parser_type="mineru",  # or "docling" or "paddleocr"
+    parser_type="mineru",  # or "docling", "paddleocr", or "minicpmocr"
     max_workers=4,
     show_progress=True,
     timeout_per_file=300,
@@ -152,6 +155,7 @@ python -m raganything.batch_parser examples/sample_docs/ --output ./output --wor
 # With specific parser
 python -m raganything.batch_parser examples/sample_docs/ --parser mineru --method auto
 python -m raganything.batch_parser examples/sample_docs/ --parser paddleocr --method ocr
+python -m raganything.batch_parser examples/sample_docs/ --parser minicpmocr --method ocr
 
 # Without progress bar
 python -m raganything.batch_parser examples/sample_docs/ --output ./output --no-progress
@@ -256,7 +260,7 @@ OUTPUT_DIR=./parsed_output
 
 ### BatchParser Parameters
 
-- **parser_type**: `"mineru"`, `"docling"`, or `"paddleocr"` (default: `"mineru"`)
+- **parser_type**: `"mineru"`, `"docling"`, `"paddleocr"`, or `"minicpmocr"` (default: `"mineru"`)
 - **max_workers**: Number of parallel workers, at least 1; `0` or less raises `ValueError` (default: `4`)
 - **show_progress**: Show progress bar (default: `True`)
 - **timeout_per_file**: Per-file time limit in seconds from when a worker starts
@@ -342,7 +346,7 @@ instead of restarting it.
 - **Office documents**: `.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`
 - **Images**: `.png`, `.jpg`, `.jpeg`, `.bmp`, `.tiff`, `.tif`, `.gif`, `.webp`
 - **Text files**: `.txt`, `.md`
-- **HTML files** (Docling parser only): `.html`, `.htm`, `.xhtml`. With MinerU or PaddleOCR, `BatchParser` and the batch CLI skip HTML (a file passed explicitly is logged as "Unsupported file type"), while `parse_document()` and `process_document_complete()` raise a `ValueError` (the parser CLI exits with that error) telling you to select Docling (`RAGAnythingConfig(parser="docling")`, `PARSER=docling` or `--parser docling`), because converting HTML to PDF with LibreOffice would fetch remote URLs and embed local files referenced by the page. With Docling, `BatchParser`, the CLI, `process_documents_batch()` and `process_documents_with_rag_batch()` discover them automatically; `process_folder_complete()` filters on `SUPPORTED_FILE_EXTENSIONS`, so pass `file_extensions=[".html", ".htm", ".xhtml"]` (or add them to that variable). Docling does not fetch `<img>` sources, so HTML images are not analysed; their caption (or alt text) is indexed as text.
+- **HTML files** (Docling parser only): `.html`, `.htm`, `.xhtml`. With MinerU, PaddleOCR, or MiniCPM-OCR, `BatchParser` and the batch CLI skip HTML (a file passed explicitly is logged as "Unsupported file type"), while `parse_document()` and `process_document_complete()` raise a `ValueError` (the parser CLI exits with that error) telling you to select Docling (`RAGAnythingConfig(parser="docling")`, `PARSER=docling` or `--parser docling`), because converting HTML to PDF with LibreOffice would fetch remote URLs and embed local files referenced by the page. With Docling, `BatchParser`, the CLI, `process_documents_batch()` and `process_documents_with_rag_batch()` discover them automatically; `process_folder_complete()` filters on `SUPPORTED_FILE_EXTENSIONS`, so pass `file_extensions=[".html", ".htm", ".xhtml"]` (or add them to that variable). Docling does not fetch `<img>` sources, so HTML images are not analysed; their caption (or alt text) is indexed as text.
 
 ## API Reference
 

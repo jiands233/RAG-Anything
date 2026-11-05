@@ -111,7 +111,7 @@ async def process_with_rag(
         # Create RAGAnything configuration
         config = RAGAnythingConfig(
             working_dir=working_dir or "./rag_storage",
-            parser=parser,  # Parser selection: mineru, docling, or paddleocr
+            parser=parser,  # Parser selection: mineru, docling, paddleocr, or minicpmocr
             parse_method="auto",  # Parse method: auto, ocr, or txt
             enable_image_processing=True,
             enable_table_processing=True,
@@ -301,7 +301,7 @@ def main():
         "--parser",
         default=os.getenv("PARSER", "mineru"),
         help=(
-            "Parser selection. Built-ins: mineru, docling, paddleocr. "
+            "Parser selection. Built-ins: mineru, docling, paddleocr, minicpmocr. "
             "Custom parsers that you register via register_parser() in the "
             "same Python process are also accepted when using RAGAnything as "
             "a library. This example script does not perform any automatic "

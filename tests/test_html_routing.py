@@ -1,6 +1,6 @@
 """HTML is accepted only by parsers with a native parse_html (Docling).
 
-parse_document routes HTML to parse_html. MinerU and PaddleOCR could only
+parse_document routes HTML to parse_html. MinerU, PaddleOCR, and MiniCPM-OCR could only
 read HTML by converting it to PDF with LibreOffice, which fetches remote URLs
 and embeds local files referenced by the page, so every path into them must
 refuse HTML before any conversion runs.
@@ -13,6 +13,7 @@ import pytest
 
 import raganything.parser as parser_module
 from raganything.batch_parser import BatchParser
+from raganything.minicpmocr import MiniCPMOCRParser
 from raganything.parser import MineruParser, PaddleOCRParser, Parser
 from raganything.processor import ProcessorMixin
 
@@ -136,7 +137,9 @@ def _fail_parse_pdf(self, *args, **kwargs):
     raise AssertionError("HTML must not reach parse_pdf")
 
 
-@pytest.mark.parametrize("parser_cls", [MineruParser, PaddleOCRParser])
+@pytest.mark.parametrize(
+    "parser_cls", [MineruParser, PaddleOCRParser, MiniCPMOCRParser]
+)
 @pytest.mark.parametrize("entry_point", ["parse_document", "parse_office_doc"])
 @pytest.mark.parametrize("ext", [".html", ".htm", ".xhtml", ".XHTML"])
 def test_direct_parser_paths_reject_html(
@@ -183,7 +186,7 @@ def test_parser_cli_rejects_html_for_mineru(
 
 @pytest.mark.parametrize(
     "parser_type, html_advertised",
-    [("mineru", False), ("paddleocr", False), ("docling", True)],
+    [("mineru", False), ("paddleocr", False), ("minicpmocr", False), ("docling", True)],
 )
 def test_batch_discovery_advertises_html_only_for_docling(parser_type, html_advertised):
     batch_parser = BatchParser(

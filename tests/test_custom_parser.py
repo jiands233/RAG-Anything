@@ -63,7 +63,7 @@ class TestRegisterParser:
             register_parser("bad", dict)
 
     def test_register_rejects_builtin_name(self):
-        for name in ("mineru", "docling", "paddleocr"):
+        for name in ("mineru", "docling", "paddleocr", "minicpmocr"):
             with pytest.raises(ValueError, match="Cannot override built-in"):
                 register_parser(name, DummyParser)
 
@@ -110,14 +110,16 @@ class TestListParsers:
         assert "mineru" in result
         assert "docling" in result
         assert "paddleocr" in result
-        assert len(result) == 3
+        assert "minicpmocr" in result
+        assert result["minicpmocr"] == "MiniCPMOCRParser"
+        assert len(result) == 4
 
     def test_list_includes_custom(self):
         register_parser("dummy", DummyParser)
         result = list_parsers()
         assert "dummy" in result
         assert result["dummy"] == "DummyParser"
-        assert len(result) == 4
+        assert len(result) == 5
 
 
 class TestGetSupportedParsers:

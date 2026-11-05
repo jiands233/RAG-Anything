@@ -81,7 +81,7 @@ class BatchParser:
         Initialize batch parser
 
         Args:
-            parser_type: Type of parser to use ("mineru", "docling", or "paddleocr")
+            parser_type: Type of parser to use ("mineru", "docling", "paddleocr", or "minicpmocr")
             max_workers: Maximum number of parallel workers (at least 1)
             show_progress: Whether to show progress bars
             timeout_per_file: Per-worker time limit in seconds, measured from
@@ -706,7 +706,7 @@ def main():
         "--parser",
         default="mineru",
         help=(
-            "Parser to use. Built-ins: mineru, docling, paddleocr. "
+            "Parser to use. Built-ins: mineru, docling, paddleocr, minicpmocr. "
             "When using RAGAnything as a library, any custom parsers that you "
             "have registered via register_parser() in the current process "
             "are also accepted. The standalone CLI itself does not perform "

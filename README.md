@@ -340,7 +340,7 @@ async def main():
     # Create RAGAnything configuration
     config = RAGAnythingConfig(
         working_dir="./rag_storage",
-        parser="mineru",  # Parser selection: mineru, docling, or paddleocr
+        parser="mineru",  # Parser selection: mineru, docling, paddleocr, or minicpmocr
         parse_method="auto",  # Parse method: auto, ocr, or txt
         enable_image_processing=True,
         enable_table_processing=True,
@@ -1116,7 +1116,7 @@ Create a `.env` file (refer to `.env.example`):
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_BASE_URL=your_base_url  # Optional
 OUTPUT_DIR=./output             # Default output directory for parsed documents
-PARSER=mineru                   # Parser selection: mineru, docling, or paddleocr
+PARSER=mineru                   # Parser selection: mineru, docling, paddleocr, or minicpmocr
 PARSE_METHOD=auto              # Parse method: auto, ocr, or txt
 ```
 
@@ -1146,7 +1146,7 @@ After parsing, each non-empty `img_path`, `table_img_path`, or `equation_img_pat
 
 ### Parser Configuration
 
-The parser is chosen when `RAGAnything` is created: set `RAGAnythingConfig(parser=...)` to `"mineru"` (default), `"docling"`, or `"paddleocr"`, or use the `PARSER` environment variable (command-line tools: `--parser`). It cannot be switched per `process_document_complete()` call.
+The parser is chosen when `RAGAnything` is created: set `RAGAnythingConfig(parser=...)` to `"mineru"` (default), `"docling"`, `"paddleocr"`, or `"minicpmocr"`, or use the `PARSER` environment variable (command-line tools: `--parser`). It cannot be switched per `process_document_complete()` call.
 
 RAGAnything now supports multiple parsers, each with specific advantages:
 
@@ -1157,7 +1157,7 @@ RAGAnything now supports multiple parsers, each with specific advantages:
 
 #### Docling Parser
 - Optimized for Office documents and HTML files
-- The only built-in parser that accepts HTML (.html, .htm, .xhtml); MinerU and PaddleOCR reject it (see [Document Formats](#document-formats))
+- The only built-in parser that accepts HTML (.html, .htm, .xhtml); MinerU, PaddleOCR, and MiniCPM-OCR reject it (see [Document Formats](#document-formats))
 - Better document structure preservation
 - Native support for multiple Office formats
 
@@ -1182,6 +1182,42 @@ uv sync --extra paddleocr
 
 > **Note**: PaddleOCR also requires `paddlepaddle` (CPU/GPU package varies by platform). Install it with the official guide: https://www.paddlepaddle.org.cn/install/quick
 
+#### MiniCPM-OCR Parser
+- Block-level parser for Chinese and English PDFs and images, including scans and photos
+- Runs PP-DocLayoutV3 locally, then recognizes each crop on an external MiniCPM-OCR 1.0 server (`Text Recognition:`, `Table Recognition:`, `Formula Recognition:`, and the SDK's other block prompts)
+- Emits text, table, equation, and image blocks in the standard `content_list` format
+- Same file types as PaddleOCR (PDF, images, Office, text). HTML is rejected
+
+The recognition model is not bundled. Install the extra, install `paddlepaddle` for layout detection, and point `MINICPM_OCR_BASE_URL` at a running server:
+
+```bash
+pip install -e ".[minicpmocr]"
+# or
+uv sync --extra minicpmocr
+```
+
+```bash
+# vLLM example; see the MiniCPM-OCR deployment guide for SGLang, llama.cpp, and Ollama
+vllm serve openbmb/MiniCPM-OCR-1.0 \
+  --served-model-name minicpm-ocr --host 127.0.0.1 --port 8000
+```
+
+```bash
+MINICPM_OCR_BASE_URL=http://127.0.0.1:8000   # server root; a trailing /v1 is removed
+MINICPM_OCR_MODEL=minicpm-ocr
+MINICPM_OCR_BACKEND=vllm                     # vllm, sglang, openai, llamacpp, or ollama
+# MINICPM_OCR_API_KEY=
+# MINICPM_OCR_MAX_MODEL_LEN=40960
+# MINICPM_OCR_STARTUP_TIMEOUT=60
+# MINICPM_OCR_REQUEST_TIMEOUT=300
+# MINICPM_OCR_LAYOUT_DEVICE=cpu              # cpu or cuda:0
+# MINICPM_OCR_LAYOUT_DIR=~/.cache/minicpm-ocr/layout
+```
+
+> **Note**: `paddlepaddle` is platform-specific and is not part of the extra. Install it from https://www.paddlepaddle.org.cn/install/quick. `language` is accepted and ignored: one model covers Chinese and English. Page headers, footers, page numbers, footnotes, and aside text are dropped unless `include_layout_blocks=True`.
+
+Select it with `RAGAnythingConfig(parser="minicpmocr")` or `PARSER=minicpmocr`.
+
 ### MinerU Configuration
 
 ```bash
@@ -1199,7 +1235,7 @@ You can also configure parsing through RAGAnything parameters:
 
 ```python
 # The parser comes from RAGAnythingConfig (or PARSER), not from process_document_complete()
-config = RAGAnythingConfig(parser="mineru")  # "mineru", "docling", or "paddleocr"
+config = RAGAnythingConfig(parser="mineru")  # "mineru", "docling", "paddleocr", or "minicpmocr"
 rag = RAGAnything(config=config, llm_model_func=llm_model_func, embedding_func=embedding_func)
 
 # Basic parsing configuration
@@ -1234,7 +1270,7 @@ await rag.process_document_complete(
 )
 ```
 
-> **Note**: MinerU 2.0 no longer uses the `magic-pdf.json` configuration file. All settings are now passed as command-line parameters or function arguments. RAG-Anything supports multiple document parsers, including MinerU, Docling, and PaddleOCR.
+> **Note**: MinerU 2.0 no longer uses the `magic-pdf.json` configuration file. All settings are now passed as command-line parameters or function arguments. RAG-Anything supports multiple document parsers, including MinerU, Docling, PaddleOCR, and MiniCPM-OCR.
 
 #### MinerU 3.x Content List v2
 
@@ -1263,8 +1299,9 @@ Different content types require specific optional dependencies:
 - **Video** (.mp4, .mov, .webm, .avi, .mkv): Install with `pip install raganything[video]` (also needs ffmpeg on PATH) and set `enable_video_processing=True` (env `ENABLE_VIDEO_PROCESSING`); dual-channel: SceneDetect + keyframe VLM description + audio-track transcription. Media files can be passed directly to `process_document_complete()` / folder batches, or inserted as content-list items
 - **Text Files** (.txt, .md): Install with `pip install raganything[text]`. Parsed directly (no PDF/OCR round trip); markdown image references (`![alt](path)`) that point to local image files (an image extension and image file contents) become image blocks and flow through the same multimodal pipeline as images extracted from PDFs — URLs, missing files and other files stay as plain text. Referenced images are sent to the configured vision model wherever they are on disk, so only ingest Markdown whose image references you trust
 - **PaddleOCR Parser** (`parser="paddleocr"`): Install with `pip install raganything[paddleocr]`, then install `paddlepaddle` for your platform
+- **MiniCPM-OCR Parser** (`parser="minicpmocr"`): Install with `pip install raganything[minicpmocr]`, install `paddlepaddle` for layout detection, and set `MINICPM_OCR_BASE_URL` to a MiniCPM-OCR 1.0 server (vLLM, SGLang, llama.cpp, Ollama, or OpenAI-compatible)
 
-> **📋 Quick Install**: Use `pip install raganything[all]` to enable all format support (Python dependencies only - LibreOffice still needs separate installation, and HTML needs Docling: `pip install docling`)
+> **📋 Quick Install**: Use `pip install raganything[all]` to enable all format support (Python dependencies only - LibreOffice still needs separate installation, HTML needs Docling: `pip install docling`, and MiniCPM-OCR needs `pip install raganything[minicpmocr]` plus a running recognition server)
 
 ---
 
@@ -1276,7 +1313,7 @@ Different content types require specific optional dependencies:
 - **Office Documents** - DOC, DOCX, PPT, PPTX, XLS, XLSX
 - **Images** - JPG, PNG, BMP, TIFF, GIF, WebP
 - **Text Files** - TXT, MD
-- **HTML** - HTML, HTM, XHTML (Docling parser only: install it with `pip install docling` and select it with `RAGAnythingConfig(parser="docling")` or `PARSER=docling`). MinerU and PaddleOCR raise an error for these files instead of converting them to PDF with LibreOffice, because that conversion fetches remote URLs and embeds local files referenced by the page. HTML is recognised by file extension: HTML content saved under an Office extension (for example `.doc` or `.xls`) is still converted by LibreOffice
+- **HTML** - HTML, HTM, XHTML (Docling parser only: install it with `pip install docling` and select it with `RAGAnythingConfig(parser="docling")` or `PARSER=docling`). MinerU, PaddleOCR, and MiniCPM-OCR raise an error for these files instead of converting them to PDF with LibreOffice, because that conversion fetches remote URLs and embeds local files referenced by the page. HTML is recognised by file extension: HTML content saved under an Office extension (for example `.doc` or `.xls`) is still converted by LibreOffice
 
 ### Multimodal Elements
 

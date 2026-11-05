@@ -8,6 +8,7 @@ Usage:
       python examples/batch_dry_run_example.py examples/sample_docs --parser mineru
       python examples/batch_dry_run_example.py examples/sample_docs/projects examples/sample_docs/web --parser docling
       python examples/batch_dry_run_example.py examples/sample_docs --parser paddleocr
+      python examples/batch_dry_run_example.py examples/sample_docs --parser minicpmocr
   - uv install:
       uv run python examples/batch_dry_run_example.py examples/sample_docs --parser mineru --recursive
       uv run python examples/batch_dry_run_example.py examples/sample_docs --parser mineru --no-recursive
@@ -23,7 +24,7 @@ def main() -> int:
     parser.add_argument("paths", nargs="+", help="File paths or directories to scan")
     parser.add_argument(
         "--parser",
-        choices=["mineru", "docling", "paddleocr"],
+        choices=["mineru", "docling", "paddleocr", "minicpmocr"],
         default="mineru",
         help="Parser to use for file-type support",
     )
